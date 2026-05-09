@@ -17,6 +17,8 @@ O_COLOR = (50, 50, 200)
 BG_COLOR = (240, 240, 240)
 BUTTON_COLOR = (100, 200, 100)
 BUTTON_HOVER_COLOR = (120, 220, 120)
+QUIT_BUTTON_COLOR = (220, 80, 80)
+QUIT_BUTTON_HOVER_COLOR = (240, 100, 100)
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -24,8 +26,8 @@ pygame.display.set_caption("Caro AI - 9x9")
 
 # Font chữ (sử dụng font hệ thống hỗ trợ tiếng Việt)
 try:
-    font = pygame.font.SysFont('arial', 40, True)
-    small_font = pygame.font.SysFont('arial', 24, True)
+    font = pygame.font.SysFont('timesnewroman', 40, True)
+    small_font = pygame.font.SysFont('timesnewroman', 24, True)
 except Exception:
     font = pygame.font.Font(None, 40)
     small_font = pygame.font.Font(None, 24)
@@ -114,19 +116,19 @@ class CaroGame:
 
 def draw_menu(mouse_pos, btn_1p, btn_2p):
     screen.fill(BG_COLOR)
-    title = font.render("CHON CHE DO CHOI", True, BLACK)
+    title = font.render("CHỌN CHẾ ĐỘ CHƠI", True, BLACK)
     screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 3))
     
     # Nút 1 Người (vs Máy)
     c1 = BUTTON_HOVER_COLOR if btn_1p.collidepoint(mouse_pos) else BUTTON_COLOR
     pygame.draw.rect(screen, c1, btn_1p)
-    t1 = small_font.render("1 Nguoi (vs May)", True, WHITE)
+    t1 = small_font.render("1 Người (vs Máy)", True, WHITE)
     screen.blit(t1, (btn_1p.centerx - t1.get_width() // 2, btn_1p.centery - t1.get_height() // 2))
     
     # Nút 2 Người
     c2 = BUTTON_HOVER_COLOR if btn_2p.collidepoint(mouse_pos) else BUTTON_COLOR
     pygame.draw.rect(screen, c2, btn_2p)
-    t2 = small_font.render("2 Nguoi", True, WHITE)
+    t2 = small_font.render("2 Người", True, WHITE)
     screen.blit(t2, (btn_2p.centerx - t2.get_width() // 2, btn_2p.centery - t2.get_height() // 2))
 
 def draw_board(game):
@@ -159,22 +161,22 @@ def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
     status_text = ""
     if game.game_over:
         if game.winner == 'X':
-            status_text = "Nguoi choi X Thang!"
+            status_text = "Người chơi X Thắng!"
         elif game.winner == 'O':
             if game.game_mode == 1:
-                status_text = "May (O) Thang!"
+                status_text = "Máy (O) Thắng!"
             else:
-                status_text = "Nguoi choi O Thang!"
+                status_text = "Người chơi O Thắng!"
         else:
-            status_text = "Hoa!"
+            status_text = "Hòa!"
     else:
         if game.current_player == 'X':
-            status_text = "Luot cua X"
+            status_text = "Lượt của X"
         else:
             if game.game_mode == 1:
-                status_text = "May (O) dang nghi..."
+                status_text = "Máy (O) đang nghĩ..."
             else:
-                status_text = "Luot cua O"
+                status_text = "Lượt của O"
             
     text_surf = small_font.render(status_text, True, BLACK)
     screen.blit(text_surf, (WIDTH // 2 - text_surf.get_width() // 2, WIDTH + 10))
@@ -186,17 +188,18 @@ def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
         btn3_text = small_font.render(f"Undo ({2 - game.undo_count})", True, WHITE)
         screen.blit(btn3_text, (btn_undo.centerx - btn3_text.get_width() // 2, btn_undo.centery - btn3_text.get_height() // 2))
 
-    # Nút Chơi Lại và Menu khi game kết thúc
+    # Nút Thoát (Menu) luôn hiển thị để có thể thoát ván ngang chừng
+    color2 = QUIT_BUTTON_HOVER_COLOR if btn_menu.collidepoint(mouse_pos) else QUIT_BUTTON_COLOR
+    pygame.draw.rect(screen, color2, btn_menu)
+    btn2_text = small_font.render("Thoát", True, WHITE)
+    screen.blit(btn2_text, (btn_menu.centerx - btn2_text.get_width() // 2, btn_menu.centery - btn2_text.get_height() // 2))
+
+    # Nút Chơi Lại chỉ hiện khi game kết thúc
     if game.game_over:
         color1 = BUTTON_HOVER_COLOR if btn_replay.collidepoint(mouse_pos) else BUTTON_COLOR
         pygame.draw.rect(screen, color1, btn_replay)
-        btn_text = small_font.render("Choi Lai", True, WHITE)
+        btn_text = small_font.render("Chơi Lại", True, WHITE)
         screen.blit(btn_text, (btn_replay.centerx - btn_text.get_width() // 2, btn_replay.centery - btn_text.get_height() // 2))
-
-        color2 = BUTTON_HOVER_COLOR if btn_menu.collidepoint(mouse_pos) else BUTTON_COLOR
-        pygame.draw.rect(screen, color2, btn_menu)
-        btn2_text = small_font.render("Menu", True, WHITE)
-        screen.blit(btn2_text, (btn_menu.centerx - btn2_text.get_width() // 2, btn_menu.centery - btn2_text.get_height() // 2))
 
 def main():
     game = CaroGame()
@@ -207,8 +210,8 @@ def main():
     btn_2p = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 70, 200, 50)
     
     # Kích thước và vị trí nút bấm CHƠI LẠI, UNDO, MENU
-    btn_replay = pygame.Rect(WIDTH // 2 - 160, WIDTH + 45, 100, 40)
-    btn_undo   = pygame.Rect(WIDTH // 2 - 50, WIDTH + 45, 100, 40)
+    btn_undo   = pygame.Rect(WIDTH // 2 - 160, WIDTH + 45, 100, 40)
+    btn_replay = pygame.Rect(WIDTH // 2 - 50, WIDTH + 45, 100, 40)
     btn_menu   = pygame.Rect(WIDTH // 2 + 60, WIDTH + 45, 100, 40)
     
     running = True
@@ -234,15 +237,16 @@ def main():
                     
                     # Đang chơi game
                     elif game.state == 'PLAYING':
-                        # Ưu tiên xử lý nút Undo (có thể bấm bất cứ lúc nào có history)
-                        if len(game.history) > 0 and game.undo_count < 2 and btn_undo.collidepoint(event.pos):
+                        # Luôn xử lý nút Thoát (Menu) bất kể game over hay chưa
+                        if btn_menu.collidepoint(event.pos):
+                            game.state = 'MENU'
+                        # Ưu tiên xử lý nút Undo
+                        elif len(game.history) > 0 and game.undo_count < 2 and btn_undo.collidepoint(event.pos):
                             game.undo()
-                        # Xử lý các nút khi Game Over
+                        # Xử lý nút chơi lại khi Game Over
                         elif game.game_over:
                             if btn_replay.collidepoint(event.pos):
                                 game.reset_game()
-                            elif btn_menu.collidepoint(event.pos):
-                                game.state = 'MENU'
                         else:
                             # Nếu chế độ 2 Người, hoặc (chế độ 1 Người và đang là lượt của X)
                             if game.game_mode == 2 or (game.game_mode == 1 and game.current_player == 'X'):
