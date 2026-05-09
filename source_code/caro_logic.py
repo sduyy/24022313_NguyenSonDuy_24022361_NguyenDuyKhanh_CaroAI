@@ -35,7 +35,7 @@ pygame.display.set_caption("Caro AI - 9x9")
 try:
     font = pygame.font.SysFont('timesnewroman', 40, True)
     medium_font = pygame.font.SysFont('timesnewroman', 28, True)
-    
+
     small_font = pygame.font.SysFont('timesnewroman', 24, True)
 except Exception:
     font = pygame.font.Font(None, 40)
@@ -235,7 +235,7 @@ def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
     if len(game.history) > 0 and game.undo_count < 2 and not getattr(game, 'just_undid', False):
         color3 = BUTTON_HOVER_COLOR if btn_undo.collidepoint(mouse_pos) else BUTTON_COLOR
         pygame.draw.rect(screen, color3, btn_undo, border_radius=15)
-        btn3_text = small_font.render(f"Undo ({2 - game.undo_count})", True, WHITE)
+        btn3_text = small_font.render(f"Đi lại ({2 - game.undo_count})", True, WHITE)
         screen.blit(btn3_text, (btn_undo.centerx - btn3_text.get_width() // 2, btn_undo.centery - btn3_text.get_height() // 2))
 
     # Nút Thoát (Menu) luôn hiển thị để có thể thoát ván ngang chừng
