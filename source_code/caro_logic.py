@@ -2,6 +2,10 @@ import pygame
 import random
 import sys
 import os
+import math
+import time
+
+
 
 # Hằng số kích thước
 SIZE = 9
@@ -56,6 +60,8 @@ for ext in ["jpg", "png", "jpeg"]:
                 pass
     if bg_image:
         break
+
+
 
 class CaroGame:
     def __init__(self):
@@ -136,12 +142,177 @@ class CaroGame:
                 if self.board[r][c] == '.':
                     return False
         return True
+    
+    # --- Phần AI
+    # Hàm đánh giá
+    def evaluate_window(self, window):
+        """Chấm điểm cho 1 cụm 4 ô liên tiếp"""
+        score = 0
+        bot = 'O'
+        player = 'X'
+
+        bot_count = window.count(bot)
+        player_count = window.count(player)
+        empty_count = window.count('.')
+
+        # Ưu tiên tấn công (cộng điểm)
+        if bot_count == 4:
+            score += 100000
+        elif bot_count == 3 and empty_count == 1:
+            score += 1000
+        elif bot_count == 2 and empty_count == 2:
+            score += 100
+        elif bot_count == 1 and empty_count == 3:
+            score += 10
+
+        # Ưu tiên phòng thủ (trừ điểm nếu người chơi có lợi thế)
+        if player_count == 4:
+            score -= 100000
+        elif player_count == 3 and empty_count == 1:
+            score -= 1500  # Trừ nặng hơn mức cộng tương ứng để ưu tiên chặn
+        elif player_count == 2 and empty_count == 2:
+            score -= 150
+        elif player_count == 1 and empty_count == 3:
+            score -= 15
+
+        return score
+
+    def evaluate_board(self):
+        """Quét toàn bộ bàn cờ để tính tổng điểm"""
+        total_score = 0
+        
+        # 1. Chấm điểm theo hàng ngang
+        for r in range(SIZE):
+            for c in range(SIZE - 3):
+                window = [self.board[r][c+i] for i in range(4)]
+                total_score += self.evaluate_window(window)
+
+        # 2. Chấm điểm theo hàng dọc
+        for c in range(SIZE):
+            for r in range(SIZE - 3):
+                window = [self.board[r+i][c] for i in range(4)]
+                total_score += self.evaluate_window(window)
+
+        # 3. Chấm điểm theo đường chéo chính (\)
+        for r in range(SIZE - 3):
+            for c in range(SIZE - 3):
+                window = [self.board[r+i][c+i] for i in range(4)]
+                total_score += self.evaluate_window(window)
+
+        # 4. Chấm điểm theo đường chéo phụ (/)
+        for r in range(SIZE - 3):
+            for c in range(SIZE):
+                if c - 3 >= 0:
+                    window = [self.board[r+i][c-i] for i in range(4)]
+                    total_score += self.evaluate_window(window)
+
+        return total_score
+    
+    def get_valid_moves(self):
+        """Giới hạn không gian tìm kiếm: Chỉ lấy các ô trống nằm lân cận quân cờ đã có"""
+        moves = []
+        has_piece = False
+        
+        # Kiểm tra xem bàn cờ đã có quân nào chưa
+        for r in range(SIZE):
+            for c in range(SIZE):
+                if self.board[r][c] != '.':
+                    has_piece = True
+                    break
+            if has_piece: break
+            
+        # Nếu bàn cờ trống (nước đi đầu tiên), AI đánh thẳng vào giữa bàn cờ
+        if not has_piece:
+            return [(SIZE // 2, SIZE // 2)]
+            
+        # Nếu đã có quân, chỉ quét các ô kề (bán kính 1 ô)
+        for r in range(SIZE):
+            for c in range(SIZE):
+                if self.board[r][c] == '.':
+                    adjacent = False
+                    # Quét 8 ô xung quanh
+                    for dr in [-1, 0, 1]:
+                        for dc in [-1, 0, 1]:
+                            if dr == 0 and dc == 0:
+                                continue
+                            nr, nc = r + dr, c + dc
+                            if 0 <= nr < SIZE and 0 <= nc < SIZE and self.board[nr][nc] != '.':
+                                adjacent = True
+                                break
+                        if adjacent:
+                            break
+                    if adjacent:
+                        moves.append((r, c))
+        return moves
+
+    # Minimax
+    def minimax(self, depth, is_maximizing):
+        """Thuật toán Minimax đệ quy"""
+        self.nodes_visited += 1 # Tăng biến đếm số trạng thái đã xét
+
+        # 1. Kiểm tra trạng thái kết thúc (Base cases)
+        if self.check_win('O'):
+            return 10000000, None  # Trọng số vô cực cho trạng thái thắng
+        if self.check_win('X'):
+            return -10000000, None # Trọng số âm vô cực cho trạng thái thua
+        if self.is_board_full():
+            return 0, None         # Hòa
+
+        # 2. Kiểm tra giới hạn độ sâu
+        if depth == 0:
+            return self.evaluate_board(), None
+
+        valid_moves = self.get_valid_moves()
+        best_move = None
+
+        # 3. Lượt của Máy (Player 'O' - MAX)
+        if is_maximizing:
+            max_eval = -math.inf
+            for (r, c) in valid_moves:
+                self.board[r][c] = 'O' # Đánh thử
+                eval_score, _ = self.minimax(depth - 1, False)
+                self.board[r][c] = '.' # Hoàn tác
+                
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_move = (r, c)
+            return max_eval, best_move
+            
+        # 4. Lượt của Người (Player 'X' - MIN)
+        else:
+            min_eval = math.inf
+            for (r, c) in valid_moves:
+                self.board[r][c] = 'X' # Đánh thử
+                eval_score, _ = self.minimax(depth - 1, True)
+                self.board[r][c] = '.' # Hoàn tác
+                
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_move = (r, c)
+            return min_eval, best_move
 
     def bot_move(self):
-        empty_cells = [(r, c) for r in range(SIZE) for c in range(SIZE) if self.board[r][c] == '.']
-        if empty_cells:
-            return random.choice(empty_cells)
-        return None
+        """Hàm kích hoạt AI tính toán và đo đạc thông số"""
+        DEPTH = 2 # Giới hạn độ sâu: 2 là chạy mượt, 3 sẽ bắt đầu chậm
+        self.nodes_visited = 0
+        
+        print(f"\n--- LƯỢT CỦA MÁY (Minimax - Depth {DEPTH}) ---")
+        start_time = time.time() # Bắt đầu bấm giờ
+        
+        best_score, move = self.minimax(DEPTH, True)
+        
+        end_time = time.time() # Kết thúc bấm giờ
+        elapsed_time = end_time - start_time
+        
+        # In kết quả đo đạc ra console để copy vào Báo cáo thực nghiệm
+        print(f"Nước đi chọn: {move}")
+        print(f"Giá trị đánh giá: {best_score}")
+        print(f"Số trạng thái đã xét: {self.nodes_visited}")
+        print(f"Thời gian chạy: {elapsed_time:.4f} giây")
+        
+        return move
+
+
 
 def draw_menu(mouse_pos, btn_1p, btn_2p):
     if bg_image:
@@ -165,6 +336,8 @@ def draw_menu(mouse_pos, btn_1p, btn_2p):
     pygame.draw.rect(screen, c2, btn_2p, border_radius=15)
     t2 = small_font.render("2 Người", True, WHITE)
     screen.blit(t2, (btn_2p.centerx - t2.get_width() // 2, btn_2p.centery - t2.get_height() // 2))
+
+
 
 def draw_board(game):
     if bg_image:
@@ -198,6 +371,8 @@ def draw_board(game):
                 center_x = BOARD_X + c * CELL_SIZE + CELL_SIZE // 2
                 center_y = BOARD_Y + r * CELL_SIZE + CELL_SIZE // 2
                 pygame.draw.circle(screen, O_COLOR, (center_x, center_y), 15, 4)
+
+
 
 def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
     # Vẽ thông báo trạng thái
@@ -251,6 +426,8 @@ def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
         btn_text = small_font.render("Chơi Lại", True, WHITE)
         screen.blit(btn_text, (btn_replay.centerx - btn_text.get_width() // 2, btn_replay.centery - btn_text.get_height() // 2))
 
+
+
 def draw_confirm_quit(mouse_pos, btn_yes, btn_no):
     # Lớp phủ mờ
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -278,6 +455,8 @@ def draw_confirm_quit(mouse_pos, btn_yes, btn_no):
     pygame.draw.rect(screen, c_no, btn_no, border_radius=10)
     t_no = small_font.render("Hủy bỏ", True, WHITE)
     screen.blit(t_no, (btn_no.centerx - t_no.get_width() // 2, btn_no.centery - t_no.get_height() // 2))
+
+
 
 def main():
     game = CaroGame()
@@ -387,6 +566,8 @@ def main():
         
     pygame.quit()
     sys.exit()
+
+
 
 if __name__ == "__main__":
     main()
