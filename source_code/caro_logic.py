@@ -74,6 +74,7 @@ class CaroGame:
         self.history = []
         self.undo_count = 0
         self.just_undid = False
+        self.ai_type = 'Minimax' # Mặc định ban đầu
         self.reset_game()
 
     def reset_game(self):
@@ -247,7 +248,6 @@ class CaroGame:
 
     # Minimax
     def minimax(self, depth, is_maximizing):
-        """Thuật toán Minimax đệ quy"""
         self.nodes_visited += 1 # Tăng biến đếm số trạng thái đã xét
 
         # 1. Kiểm tra trạng thái kết thúc (Base cases)
@@ -290,52 +290,110 @@ class CaroGame:
                     min_eval = eval_score
                     best_move = (r, c)
             return min_eval, best_move
+        
+    # Alpha-Beta    
+    def alphabeta(self, depth, alpha, beta, is_maximizing):
+        self.nodes_visited += 1
+
+        # 1. Base cases (Giống hệt Minimax)
+        if self.check_win('O'):
+            return 10000000, None
+        if self.check_win('X'):
+            return -10000000, None
+        if self.is_board_full():
+            return 0, None
+        if depth == 0:
+            return self.evaluate_board(), None
+
+        valid_moves = self.get_valid_moves()
+        best_move = None
+
+        # 2. Lượt của Máy (Player 'O' - MAX)
+        if is_maximizing:
+            max_eval = -math.inf
+            for (r, c) in valid_moves:
+                self.board[r][c] = 'O'
+                eval_score, _ = self.alphabeta(depth - 1, alpha, beta, False)
+                self.board[r][c] = '.'
+                
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_move = (r, c)
+                
+                # Cập nhật alpha là giá trị tốt nhất hiện tại của MAX [cite: 105]
+                alpha = max(alpha, eval_score)
+                # Cắt nhánh nếu beta <= alpha [cite: 107]
+                if beta <= alpha:
+                    break 
+            return max_eval, best_move
+            
+        # 3. Lượt của Người (Player 'X' - MIN)
+        else:
+            min_eval = math.inf
+            for (r, c) in valid_moves:
+                self.board[r][c] = 'X'
+                eval_score, _ = self.alphabeta(depth - 1, alpha, beta, True)
+                self.board[r][c] = '.'
+                
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_move = (r, c)
+                
+                # Cập nhật beta là giá trị tốt nhất hiện tại của MIN [cite: 106]
+                beta = min(beta, eval_score)
+                # Cắt nhánh nếu beta <= alpha [cite: 107]
+                if beta <= alpha:
+                    break 
+            return min_eval, best_move
 
     def bot_move(self):
-        """Hàm kích hoạt AI tính toán và đo đạc thông số"""
-        DEPTH = 2 # Giới hạn độ sâu: 2 là chạy mượt, 3 sẽ bắt đầu chậm
+        """Hàm chọn thuật toán dựa trên cấu hình người dùng chọn"""
+        DEPTH = 3 # Bạn có thể để Depth 3 để thấy sự khác biệt tốc độ
         self.nodes_visited = 0
+        start_time = time.time()
         
-        print(f"\n--- LƯỢT CỦA MÁY (Minimax - Depth {DEPTH}) ---")
-        start_time = time.time() # Bắt đầu bấm giờ
-        
-        best_score, move = self.minimax(DEPTH, True)
-        
-        end_time = time.time() # Kết thúc bấm giờ
-        elapsed_time = end_time - start_time
-        
-        # In kết quả đo đạc ra console để copy vào Báo cáo thực nghiệm
+        if self.ai_type == 'Alpha-Beta':
+            print(f"\n--- AI ĐANG CHẠY: ALPHA-BETA (Depth {DEPTH}) ---")
+            best_score, move = self.alphabeta(DEPTH, -math.inf, math.inf, True)
+        else:
+            print(f"\n--- AI ĐANG CHẠY: MINIMAX (Depth {DEPTH}) ---")
+            best_score, move = self.minimax(DEPTH, True)
+            
+        elapsed_time = time.time() - start_time
         print(f"Nước đi chọn: {move}")
-        print(f"Giá trị đánh giá: {best_score}")
-        print(f"Số trạng thái đã xét: {self.nodes_visited}")
-        print(f"Thời gian chạy: {elapsed_time:.4f} giây")
+        print(f"Số trạng thái đã duyệt: {self.nodes_visited}")
+        print(f"Thời gian thực thi: {elapsed_time:.4f}s")
         
         return move
 
 
 
-def draw_menu(mouse_pos, btn_1p, btn_2p):
+def draw_menu(mouse_pos, btn_minimax, btn_alphabeta, btn_2p):
     if bg_image:
         screen.blit(bg_image, (0, 0))
     else:
         screen.fill(BG_COLOR)
         
-    title = font.render("CHỌN CHẾ ĐỘ CHƠI", True, BLACK)
+    title = font.render("CARO AI - CHỌN CHẾ ĐỘ", True, BLACK)
+    screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, SCREEN_HEIGHT // 4))
     
-    # Hiển thị trực tiếp tiêu đề, không cần nền trắng
-    screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, SCREEN_HEIGHT // 3))
+    # Nút AI Minimax
+    c1 = BUTTON_HOVER_COLOR if btn_minimax.collidepoint(mouse_pos) else BUTTON_COLOR
+    pygame.draw.rect(screen, c1, btn_minimax, border_radius=15)
+    t1 = small_font.render("Đấu với Minimax", True, WHITE)
+    screen.blit(t1, (btn_minimax.centerx - t1.get_width() // 2, btn_minimax.centery - t1.get_height() // 2))
     
-    # Nút 1 Người (vs Máy)
-    c1 = BUTTON_HOVER_COLOR if btn_1p.collidepoint(mouse_pos) else BUTTON_COLOR
-    pygame.draw.rect(screen, c1, btn_1p, border_radius=15)
-    t1 = small_font.render("1 Người (vs Máy)", True, WHITE)
-    screen.blit(t1, (btn_1p.centerx - t1.get_width() // 2, btn_1p.centery - t1.get_height() // 2))
+    # Nút AI Alpha-Beta
+    c2 = BUTTON_HOVER_COLOR if btn_alphabeta.collidepoint(mouse_pos) else BUTTON_COLOR
+    pygame.draw.rect(screen, c2, btn_alphabeta, border_radius=15)
+    t2 = small_font.render("Đấu với Alpha-Beta", True, WHITE)
+    screen.blit(t2, (btn_alphabeta.centerx - t2.get_width() // 2, btn_alphabeta.centery - t2.get_height() // 2))
     
     # Nút 2 Người
-    c2 = BUTTON_HOVER_COLOR if btn_2p.collidepoint(mouse_pos) else BUTTON_COLOR
-    pygame.draw.rect(screen, c2, btn_2p, border_radius=15)
-    t2 = small_font.render("2 Người", True, WHITE)
-    screen.blit(t2, (btn_2p.centerx - t2.get_width() // 2, btn_2p.centery - t2.get_height() // 2))
+    c3 = BUTTON_HOVER_COLOR if btn_2p.collidepoint(mouse_pos) else BUTTON_COLOR
+    pygame.draw.rect(screen, c3, btn_2p, border_radius=15)
+    t3 = small_font.render("2 Người chơi", True, WHITE)
+    screen.blit(t3, (btn_2p.centerx - t3.get_width() // 2, btn_2p.centery - t3.get_height() // 2))
 
 
 
@@ -461,11 +519,7 @@ def draw_confirm_quit(mouse_pos, btn_yes, btn_no):
 def main():
     game = CaroGame()
     clock = pygame.time.Clock()
-    
-    # Kích thước và vị trí nút bấm MENU
-    btn_1p = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, 200, 50)
-    btn_2p = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 70, 200, 50)
-    
+
     # Kích thước và vị trí nút bấm CHƠI LẠI, UNDO, MENU
     btn_y = BOARD_Y + BOARD_SIZE + 60
     btn_undo   = pygame.Rect(SCREEN_WIDTH // 2 - 160, btn_y, 100, 40)
@@ -475,6 +529,11 @@ def main():
     # Kích thước nút xác nhận thoát
     btn_yes = pygame.Rect(SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 + 20, 100, 40)
     btn_no = pygame.Rect(SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT // 2 + 20, 100, 40)
+
+    # Nút chọn chế độ chơi
+    btn_minimax = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 - 40, 250, 50)
+    btn_alphabeta = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 + 30, 250, 50)
+    btn_2p = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 + 100, 250, 50)
     
     running = True
     while running:
@@ -488,15 +547,21 @@ def main():
                 if event.button == 1:
                     # Đang ở Menu
                     if game.state == 'MENU':
-                        if btn_1p.collidepoint(event.pos):
+                        if btn_minimax.collidepoint(event.pos):
                             game.game_mode = 1
+                            game.ai_type = 'Minimax'
+                            game.reset_game()
+                            game.state = 'PLAYING'
+                        elif btn_alphabeta.collidepoint(event.pos):
+                            game.game_mode = 1
+                            game.ai_type = 'Alpha-Beta'
                             game.reset_game()
                             game.state = 'PLAYING'
                         elif btn_2p.collidepoint(event.pos):
                             game.game_mode = 2
                             game.reset_game()
                             game.state = 'PLAYING'
-                    
+                                    
                     # Đang chơi game
                     elif game.state == 'PLAYING':
                         # Luôn xử lý nút Thoát (Menu) bất kể game over hay chưa
@@ -536,7 +601,7 @@ def main():
                             game.state = 'PLAYING'
                                             
         if game.state == 'MENU':
-            draw_menu(mouse_pos, btn_1p, btn_2p)
+            draw_menu(mouse_pos, btn_minimax, btn_alphabeta, btn_2p)
         else:
             draw_board(game)
             draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos)
