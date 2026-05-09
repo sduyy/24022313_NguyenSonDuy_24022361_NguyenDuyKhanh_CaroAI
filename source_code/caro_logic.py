@@ -39,6 +39,7 @@ class CaroGame:
         self.game_mode = 1 # 1: Người vs Máy, 2: Người vs Người
         self.state = 'MENU' # Trạng thái hiện tại: 'MENU' hoặc 'PLAYING'
         self.history = []
+        self.undo_count = 0
         self.reset_game()
 
     def reset_game(self):
@@ -47,6 +48,7 @@ class CaroGame:
         self.game_over = False
         self.winner = None
         self.history = []
+        self.undo_count = 0
 
     def make_move(self, r, c, player):
         if 0 <= r < SIZE and 0 <= c < SIZE and self.board[r][c] == '.':
@@ -57,7 +59,7 @@ class CaroGame:
 
     def undo(self):
         """Hàm xử lý lùi bước (hoãn cờ)"""
-        if not self.history:
+        if not self.history or self.undo_count >= 2:
             return False
             
         pops = 1
@@ -77,6 +79,7 @@ class CaroGame:
             
         self.game_over = False
         self.winner = None
+        self.undo_count += 1
         return True
 
     def check_win(self, player):
@@ -176,11 +179,11 @@ def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
     text_surf = small_font.render(status_text, True, BLACK)
     screen.blit(text_surf, (WIDTH // 2 - text_surf.get_width() // 2, WIDTH + 10))
     
-    # Nút Undo hiện khi có lịch sử nước đi
-    if len(game.history) > 0:
+    # Nút Undo hiện khi có lịch sử nước đi và còn lượt Undo
+    if len(game.history) > 0 and game.undo_count < 2:
         color3 = BUTTON_HOVER_COLOR if btn_undo.collidepoint(mouse_pos) else BUTTON_COLOR
         pygame.draw.rect(screen, color3, btn_undo)
-        btn3_text = small_font.render("Undo", True, WHITE)
+        btn3_text = small_font.render(f"Undo ({2 - game.undo_count})", True, WHITE)
         screen.blit(btn3_text, (btn_undo.centerx - btn3_text.get_width() // 2, btn_undo.centery - btn3_text.get_height() // 2))
 
     # Nút Chơi Lại và Menu khi game kết thúc
@@ -232,7 +235,7 @@ def main():
                     # Đang chơi game
                     elif game.state == 'PLAYING':
                         # Ưu tiên xử lý nút Undo (có thể bấm bất cứ lúc nào có history)
-                        if len(game.history) > 0 and btn_undo.collidepoint(event.pos):
+                        if len(game.history) > 0 and game.undo_count < 2 and btn_undo.collidepoint(event.pos):
                             game.undo()
                         # Xử lý các nút khi Game Over
                         elif game.game_over:
