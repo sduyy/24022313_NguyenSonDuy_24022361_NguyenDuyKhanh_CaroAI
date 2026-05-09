@@ -75,6 +75,7 @@ class CaroGame:
         self.undo_count = 0
         self.just_undid = False
         self.ai_type = 'Minimax' # Mặc định ban đầu
+        self.ai_depth = 3 # Độ sâu mặc định
         self.reset_game()
 
     def reset_game(self):
@@ -158,9 +159,9 @@ class CaroGame:
 
         # Ưu tiên tấn công (cộng điểm)
         if bot_count == 4:
-            score += 100000
+            score += 1000000
         elif bot_count == 3 and empty_count == 1:
-            score += 1000
+            score += 5000
         elif bot_count == 2 and empty_count == 2:
             score += 100
         elif bot_count == 1 and empty_count == 3:
@@ -168,9 +169,9 @@ class CaroGame:
 
         # Ưu tiên phòng thủ (trừ điểm nếu người chơi có lợi thế)
         if player_count == 4:
-            score -= 100000
+            score -= 1000000
         elif player_count == 3 and empty_count == 1:
-            score -= 1500  # Trừ nặng hơn mức cộng tương ứng để ưu tiên chặn
+            score -= 10000  # Phải chặn 3 của đối thủ ngay lập tức
         elif player_count == 2 and empty_count == 2:
             score -= 150
         elif player_count == 1 and empty_count == 3:
@@ -246,15 +247,36 @@ class CaroGame:
                         moves.append((r, c))
         return moves
 
+    def get_ordered_moves(self, is_maximizing):
+        """Move Ordering: Đánh giá nhanh và sắp xếp nước đi để tối ưu Alpha-Beta Pruning"""
+        valid_moves = self.get_valid_moves()
+        move_scores = []
+        
+        for r, c in valid_moves:
+            player = 'O' if is_maximizing else 'X'
+            self.board[r][c] = player
+            # Chấm điểm bàn cờ nếu đi nước này
+            score = self.evaluate_board()
+            self.board[r][c] = '.' # Hoàn tác
+            move_scores.append((score, (r, c)))
+            
+        # Sắp xếp: Max ưu tiên điểm cao nhất, Min ưu tiên điểm thấp nhất
+        if is_maximizing:
+            move_scores.sort(key=lambda x: x[0], reverse=True)
+        else:
+            move_scores.sort(key=lambda x: x[0])
+            
+        return [move for score, move in move_scores]
+
     # Minimax
     def minimax(self, depth, is_maximizing):
         self.nodes_visited += 1 # Tăng biến đếm số trạng thái đã xét
 
         # 1. Kiểm tra trạng thái kết thúc (Base cases)
         if self.check_win('O'):
-            return 10000000, None  # Trọng số vô cực cho trạng thái thắng
+            return 10000000 + depth, None  # Thắng càng sớm (depth còn lớn) càng tốt
         if self.check_win('X'):
-            return -10000000, None # Trọng số âm vô cực cho trạng thái thua
+            return -10000000 - depth, None # Thua càng muộn (depth còn nhỏ) càng tốt
         if self.is_board_full():
             return 0, None         # Hòa
 
@@ -262,7 +284,7 @@ class CaroGame:
         if depth == 0:
             return self.evaluate_board(), None
 
-        valid_moves = self.get_valid_moves()
+        valid_moves = self.get_ordered_moves(is_maximizing)
         best_move = None
 
         # 3. Lượt của Máy (Player 'O' - MAX)
@@ -297,15 +319,15 @@ class CaroGame:
 
         # 1. Base cases (Giống hệt Minimax)
         if self.check_win('O'):
-            return 10000000, None
+            return 10000000 + depth, None
         if self.check_win('X'):
-            return -10000000, None
+            return -10000000 - depth, None
         if self.is_board_full():
             return 0, None
         if depth == 0:
             return self.evaluate_board(), None
 
-        valid_moves = self.get_valid_moves()
+        valid_moves = self.get_ordered_moves(is_maximizing)
         best_move = None
 
         # 2. Lượt của Máy (Player 'O' - MAX)
@@ -348,7 +370,7 @@ class CaroGame:
 
     def bot_move(self):
         """Hàm chọn thuật toán dựa trên cấu hình người dùng chọn"""
-        DEPTH = 3 # Bạn có thể để Depth 3 để thấy sự khác biệt tốc độ
+        DEPTH = self.ai_depth
         self.nodes_visited = 0
         start_time = time.time()
         
@@ -395,6 +417,39 @@ def draw_menu(mouse_pos, btn_minimax, btn_alphabeta, btn_2p):
     t3 = small_font.render("2 Người chơi", True, WHITE)
     screen.blit(t3, (btn_2p.centerx - t3.get_width() // 2, btn_2p.centery - t3.get_height() // 2))
 
+def draw_difficulty_menu(mouse_pos, btn_easy, btn_med, btn_hard, btn_back):
+    if bg_image:
+        screen.blit(bg_image, (0, 0))
+    else:
+        screen.fill(BG_COLOR)
+        
+    title = font.render("CHỌN ĐỘ KHÓ", True, BLACK)
+    screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, SCREEN_HEIGHT // 4 - 30))
+    
+    # Nút Dễ
+    c1 = BUTTON_HOVER_COLOR if btn_easy.collidepoint(mouse_pos) else BUTTON_COLOR
+    pygame.draw.rect(screen, c1, btn_easy, border_radius=15)
+    t1 = small_font.render("Dễ (Mức 2)", True, WHITE)
+    screen.blit(t1, (btn_easy.centerx - t1.get_width() // 2, btn_easy.centery - t1.get_height() // 2))
+    
+    # Nút Trung Bình
+    c2 = BUTTON_HOVER_COLOR if btn_med.collidepoint(mouse_pos) else BUTTON_COLOR
+    pygame.draw.rect(screen, c2, btn_med, border_radius=15)
+    t2 = small_font.render("Trung Bình (Mức 3)", True, WHITE)
+    screen.blit(t2, (btn_med.centerx - t2.get_width() // 2, btn_med.centery - t2.get_height() // 2))
+    
+    # Nút Khó
+    c3 = BUTTON_HOVER_COLOR if btn_hard.collidepoint(mouse_pos) else BUTTON_COLOR
+    pygame.draw.rect(screen, c3, btn_hard, border_radius=15)
+    t3 = small_font.render("Khó (Mức 4)", True, WHITE)
+    screen.blit(t3, (btn_hard.centerx - t3.get_width() // 2, btn_hard.centery - t3.get_height() // 2))
+
+    # Nút Quay lại
+    c4 = QUIT_BUTTON_HOVER_COLOR if btn_back.collidepoint(mouse_pos) else QUIT_BUTTON_COLOR
+    pygame.draw.rect(screen, c4, btn_back, border_radius=15)
+    t4 = small_font.render("Quay lại", True, WHITE)
+    screen.blit(t4, (btn_back.centerx - t4.get_width() // 2, btn_back.centery - t4.get_height() // 2))
+
 
 
 def draw_board(game):
@@ -432,20 +487,10 @@ def draw_board(game):
 
 
 
-def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
+def draw_status(game, btn_undo, btn_menu, mouse_pos):
     # Vẽ thông báo trạng thái
     status_text = ""
-    if game.game_over:
-        if game.winner == 'X':
-            status_text = "Người chơi X Thắng!"
-        elif game.winner == 'O':
-            if game.game_mode == 1:
-                status_text = "Máy (O) Thắng!"
-            else:
-                status_text = "Người chơi O Thắng!"
-        else:
-            status_text = "Hòa!"
-    else:
+    if not game.game_over:
         if game.current_player == 'X':
             status_text = "Lượt của X"
         else:
@@ -454,15 +499,16 @@ def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
             else:
                 status_text = "Lượt của O"
             
-    text_surf = small_font.render(status_text, True, BLACK)
-    
-    # Tạo nền mờ cho text trạng thái dễ đọc
-    status_y = BOARD_Y + BOARD_SIZE + 15
-    text_bg = pygame.Surface((text_surf.get_width() + 30, text_surf.get_height() + 10))
-    text_bg.fill((255, 255, 255))
-    text_bg.set_alpha(180)
-    screen.blit(text_bg, (SCREEN_WIDTH // 2 - text_bg.get_width() // 2, status_y - 5))
-    screen.blit(text_surf, (SCREEN_WIDTH // 2 - text_surf.get_width() // 2, status_y))
+    if status_text:
+        text_surf = small_font.render(status_text, True, BLACK)
+        
+        # Tạo nền mờ cho text trạng thái dễ đọc
+        status_y = BOARD_Y + BOARD_SIZE + 15
+        text_bg = pygame.Surface((text_surf.get_width() + 30, text_surf.get_height() + 10))
+        text_bg.fill((255, 255, 255))
+        text_bg.set_alpha(180)
+        screen.blit(text_bg, (SCREEN_WIDTH // 2 - text_bg.get_width() // 2, status_y - 5))
+        screen.blit(text_surf, (SCREEN_WIDTH // 2 - text_surf.get_width() // 2, status_y))
     
     # Nút Undo hiện khi có lịch sử nước đi và còn lượt Undo, đồng thời chưa bị khóa (không undo 2 lần liên tiếp)
     if len(game.history) > 0 and game.undo_count < 2 and not getattr(game, 'just_undid', False):
@@ -477,12 +523,42 @@ def draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos):
     btn2_text = small_font.render("Thoát", True, WHITE)
     screen.blit(btn2_text, (btn_menu.centerx - btn2_text.get_width() // 2, btn_menu.centery - btn2_text.get_height() // 2))
 
-    # Nút Chơi Lại chỉ hiện khi game kết thúc
-    if game.game_over:
-        color1 = BUTTON_HOVER_COLOR if btn_replay.collidepoint(mouse_pos) else BUTTON_COLOR
-        pygame.draw.rect(screen, color1, btn_replay, border_radius=15)
-        btn_text = small_font.render("Chơi Lại", True, WHITE)
-        screen.blit(btn_text, (btn_replay.centerx - btn_text.get_width() // 2, btn_replay.centery - btn_text.get_height() // 2))
+def draw_game_over_popup(game, mouse_pos, btn_replay, btn_menu):
+    # Lớp phủ mờ
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    overlay.fill(BLACK)
+    overlay.set_alpha(150)
+    screen.blit(overlay, (0, 0))
+    
+    # Hộp thoại
+    box_w, box_h = 400, 200
+    box_rect = pygame.Rect(SCREEN_WIDTH // 2 - box_w // 2, SCREEN_HEIGHT // 2 - box_h // 2, box_w, box_h)
+    pygame.draw.rect(screen, BG_COLOR, box_rect, border_radius=15)
+    pygame.draw.rect(screen, LINE_COLOR, box_rect, width=3, border_radius=15)
+    
+    # Nội dung kết quả
+    status_text = ""
+    if game.winner == 'X':
+        status_text = "BẠN ĐÃ THẮNG!" if game.game_mode == 1 else "Người chơi X Thắng!"
+    elif game.winner == 'O':
+        status_text = "BẠN ĐÃ THUA!" if game.game_mode == 1 else "Người chơi O Thắng!"
+    else:
+        status_text = "HÒA NHAU!"
+        
+    text = medium_font.render(status_text, True, BLACK)
+    screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - 60))
+    
+    # Nút Chơi lại
+    c_yes = BUTTON_HOVER_COLOR if btn_replay.collidepoint(mouse_pos) else BUTTON_COLOR
+    pygame.draw.rect(screen, c_yes, btn_replay, border_radius=10)
+    t_yes = small_font.render("Chơi lại", True, WHITE)
+    screen.blit(t_yes, (btn_replay.centerx - t_yes.get_width() // 2, btn_replay.centery - t_yes.get_height() // 2))
+    
+    # Nút Trở về Menu
+    c_no = QUIT_BUTTON_HOVER_COLOR if btn_menu.collidepoint(mouse_pos) else QUIT_BUTTON_COLOR
+    pygame.draw.rect(screen, c_no, btn_menu, border_radius=10)
+    t_no = small_font.render("Về Menu", True, WHITE)
+    screen.blit(t_no, (btn_menu.centerx - t_no.get_width() // 2, btn_menu.centery - t_no.get_height() // 2))
 
 
 
@@ -520,20 +596,27 @@ def main():
     game = CaroGame()
     clock = pygame.time.Clock()
 
-    # Kích thước và vị trí nút bấm CHƠI LẠI, UNDO, MENU
+    # Kích thước và vị trí nút bấm CHƠI LẠI (bỏ), UNDO, MENU
     btn_y = BOARD_Y + BOARD_SIZE + 60
-    btn_undo   = pygame.Rect(SCREEN_WIDTH // 2 - 160, btn_y, 100, 40)
-    btn_replay = pygame.Rect(SCREEN_WIDTH // 2 - 50, btn_y, 100, 40)
-    btn_menu   = pygame.Rect(SCREEN_WIDTH // 2 + 60, btn_y, 100, 40)
+    btn_undo   = pygame.Rect(SCREEN_WIDTH // 2 - 110, btn_y, 100, 40)
+    btn_menu   = pygame.Rect(SCREEN_WIDTH // 2 + 10, btn_y, 100, 40)
     
-    # Kích thước nút xác nhận thoát
+    # Kích thước nút xác nhận thoát & popup kết thúc
     btn_yes = pygame.Rect(SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 + 20, 100, 40)
     btn_no = pygame.Rect(SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT // 2 + 20, 100, 40)
+    btn_replay_popup = pygame.Rect(SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 + 20, 100, 40)
+    btn_menu_popup = pygame.Rect(SCREEN_WIDTH // 2 + 20, SCREEN_HEIGHT // 2 + 20, 100, 40)
 
     # Nút chọn chế độ chơi
     btn_minimax = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 - 40, 250, 50)
     btn_alphabeta = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 + 30, 250, 50)
     btn_2p = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 + 100, 250, 50)
+
+    # Nút chọn độ khó
+    btn_easy = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 - 50, 250, 45)
+    btn_med = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 + 5, 250, 45)
+    btn_hard = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 + 60, 250, 45)
+    btn_back = pygame.Rect(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 + 125, 250, 40)
     
     running = True
     while running:
@@ -550,17 +633,32 @@ def main():
                         if btn_minimax.collidepoint(event.pos):
                             game.game_mode = 1
                             game.ai_type = 'Minimax'
-                            game.reset_game()
-                            game.state = 'PLAYING'
+                            game.state = 'DIFFICULTY'
                         elif btn_alphabeta.collidepoint(event.pos):
                             game.game_mode = 1
                             game.ai_type = 'Alpha-Beta'
-                            game.reset_game()
-                            game.state = 'PLAYING'
+                            game.state = 'DIFFICULTY'
                         elif btn_2p.collidepoint(event.pos):
                             game.game_mode = 2
                             game.reset_game()
                             game.state = 'PLAYING'
+                            
+                    # Đang ở chọn độ khó
+                    elif game.state == 'DIFFICULTY':
+                        if btn_easy.collidepoint(event.pos):
+                            game.ai_depth = 2
+                            game.reset_game()
+                            game.state = 'PLAYING'
+                        elif btn_med.collidepoint(event.pos):
+                            game.ai_depth = 3
+                            game.reset_game()
+                            game.state = 'PLAYING'
+                        elif btn_hard.collidepoint(event.pos):
+                            game.ai_depth = 4
+                            game.reset_game()
+                            game.state = 'PLAYING'
+                        elif btn_back.collidepoint(event.pos):
+                            game.state = 'MENU'
                                     
                     # Đang chơi game
                     elif game.state == 'PLAYING':
@@ -570,10 +668,12 @@ def main():
                         # Ưu tiên xử lý nút Undo
                         elif len(game.history) > 0 and game.undo_count < 2 and not getattr(game, 'just_undid', False) and btn_undo.collidepoint(event.pos):
                             game.undo()
-                        # Xử lý nút chơi lại khi Game Over
+                        # Xử lý nút popup khi Game Over
                         elif game.game_over:
-                            if btn_replay.collidepoint(event.pos):
+                            if btn_replay_popup.collidepoint(event.pos):
                                 game.reset_game()
+                            elif btn_menu_popup.collidepoint(event.pos):
+                                game.state = 'MENU'
                         else:
                             # Nếu chế độ 2 Người, hoặc (chế độ 1 Người và đang là lượt của X)
                             if game.game_mode == 2 or (game.game_mode == 1 and game.current_player == 'X'):
@@ -602,12 +702,17 @@ def main():
                                             
         if game.state == 'MENU':
             draw_menu(mouse_pos, btn_minimax, btn_alphabeta, btn_2p)
+        elif game.state == 'DIFFICULTY':
+            draw_difficulty_menu(mouse_pos, btn_easy, btn_med, btn_hard, btn_back)
         else:
             draw_board(game)
-            draw_status(game, btn_replay, btn_undo, btn_menu, mouse_pos)
+            draw_status(game, btn_undo, btn_menu, mouse_pos)
             
             if game.state == 'CONFIRM_QUIT':
                 draw_confirm_quit(mouse_pos, btn_yes, btn_no)
+                
+            if game.game_over and game.state == 'PLAYING':
+                draw_game_over_popup(game, mouse_pos, btn_replay_popup, btn_menu_popup)
             
             # Lượt của Máy (Bot) chỉ chạy khi đang PLAYING
             if game.game_mode == 1 and not game.game_over and game.current_player == 'O' and game.state == 'PLAYING':
