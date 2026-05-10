@@ -86,6 +86,8 @@ class CaroGame:
         self.history = []
         self.undo_count = 0
         self.just_undid = False
+        self.winning_line = None
+        self.game_over_time = 0
 
     def make_move(self, r, c, player):
         if 0 <= r < SIZE and 0 <= c < SIZE and self.board[r][c] == '.':
@@ -137,6 +139,23 @@ class CaroGame:
                         if count == 4:
                             return True
         return False
+
+    def get_winning_line(self, player):
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+        for r in range(SIZE):
+            for c in range(SIZE):
+                if self.board[r][c] == player:
+                    for dr, dc in directions:
+                        count = 1
+                        for step in range(1, 4):
+                            nr, nc = r + dr * step, c + dc * step
+                            if 0 <= nr < SIZE and 0 <= nc < SIZE and self.board[nr][nc] == player:
+                                count += 1
+                            else:
+                                break
+                        if count == 4:
+                            return ((r, c), (r + dr * 3, c + dc * 3))
+        return None
 
     def is_board_full(self):
         for r in range(SIZE):
@@ -463,6 +482,16 @@ def draw_board(game):
     # Viền bàn cờ
     pygame.draw.rect(screen, BLACK, (BOARD_X, BOARD_Y, BOARD_SIZE, BOARD_SIZE), 3)
 
+    # Đánh dấu nước đi cuối của cả 2 bên (máy và người)
+    for i in [-1, -2]:
+        if len(game.history) >= abs(i):
+            last_r, last_c = game.history[i]
+            last_x = BOARD_X + last_c * CELL_SIZE
+            last_y = BOARD_Y + last_r * CELL_SIZE
+            # Nước đi vừa xong có màu vàng đậm hơn, nước đi trước đó màu vàng nhạt hơn
+            color = (255, 235, 100) if i == -1 else (255, 245, 180)
+            pygame.draw.rect(screen, color, (last_x, last_y, CELL_SIZE, CELL_SIZE))
+
     # Vẽ lưới
     for x in range(0, BOARD_SIZE + 1, CELL_SIZE):
         pygame.draw.line(screen, LINE_COLOR, (BOARD_X + x, BOARD_Y), (BOARD_X + x, BOARD_Y + BOARD_SIZE), 2)
@@ -484,6 +513,26 @@ def draw_board(game):
                 center_x = BOARD_X + c * CELL_SIZE + CELL_SIZE // 2
                 center_y = BOARD_Y + r * CELL_SIZE + CELL_SIZE // 2
                 pygame.draw.circle(screen, O_COLOR, (center_x, center_y), 15, 4)
+
+    # Vẽ đường thẳng chiến thắng
+    if getattr(game, 'winning_line', None):
+        (r1, c1), (r2, c2) = game.winning_line
+        start_x = BOARD_X + c1 * CELL_SIZE + CELL_SIZE // 2
+        start_y = BOARD_Y + r1 * CELL_SIZE + CELL_SIZE // 2
+        end_x = BOARD_X + c2 * CELL_SIZE + CELL_SIZE // 2
+        end_y = BOARD_Y + r2 * CELL_SIZE + CELL_SIZE // 2
+        
+        # Kéo dài đường thẳng ra ở 2 đầu cho đẹp hơn
+        dr = int((r2 - r1) / 3)
+        dc = int((c2 - c1) / 3)
+        extend = 20
+        start_x -= dc * extend
+        start_y -= dr * extend
+        end_x += dc * extend
+        end_y += dr * extend
+        
+        # Đường thẳng mảnh hơn (5px) và có màu xanh tươi
+        pygame.draw.line(screen, (46, 204, 113), (start_x, start_y), (end_x, end_y), 5)
 
 
 
@@ -670,10 +719,11 @@ def main():
                             game.undo()
                         # Xử lý nút popup khi Game Over
                         elif game.game_over:
-                            if btn_replay_popup.collidepoint(event.pos):
-                                game.reset_game()
-                            elif btn_menu_popup.collidepoint(event.pos):
-                                game.state = 'MENU'
+                            if pygame.time.get_ticks() - getattr(game, 'game_over_time', 0) > 1500:
+                                if btn_replay_popup.collidepoint(event.pos):
+                                    game.reset_game()
+                                elif btn_menu_popup.collidepoint(event.pos):
+                                    game.state = 'MENU'
                         else:
                             # Nếu chế độ 2 Người, hoặc (chế độ 1 Người và đang là lượt của X)
                             if game.game_mode == 2 or (game.game_mode == 1 and game.current_player == 'X'):
@@ -686,9 +736,12 @@ def main():
                                         if game.check_win(game.current_player):
                                             game.game_over = True
                                             game.winner = game.current_player
+                                            game.winning_line = game.get_winning_line(game.current_player)
+                                            game.game_over_time = pygame.time.get_ticks()
                                         elif game.is_board_full():
                                             game.game_over = True
                                             game.winner = 'Draw'
+                                            game.game_over_time = pygame.time.get_ticks()
                                         else:
                                             # Đổi lượt
                                             game.current_player = 'O' if game.current_player == 'X' else 'X'
@@ -712,7 +765,8 @@ def main():
                 draw_confirm_quit(mouse_pos, btn_yes, btn_no)
                 
             if game.game_over and game.state == 'PLAYING':
-                draw_game_over_popup(game, mouse_pos, btn_replay_popup, btn_menu_popup)
+                if pygame.time.get_ticks() - getattr(game, 'game_over_time', 0) > 1500:
+                    draw_game_over_popup(game, mouse_pos, btn_replay_popup, btn_menu_popup)
             
             # Lượt của Máy (Bot) chỉ chạy khi đang PLAYING
             if game.game_mode == 1 and not game.game_over and game.current_player == 'O' and game.state == 'PLAYING':
@@ -725,9 +779,12 @@ def main():
                     if game.check_win('O'):
                         game.game_over = True
                         game.winner = 'O'
+                        game.winning_line = game.get_winning_line('O')
+                        game.game_over_time = pygame.time.get_ticks()
                     elif game.is_board_full():
                         game.game_over = True
                         game.winner = 'Draw'
+                        game.game_over_time = pygame.time.get_ticks()
                     else:
                         game.current_player = 'X'
                         
