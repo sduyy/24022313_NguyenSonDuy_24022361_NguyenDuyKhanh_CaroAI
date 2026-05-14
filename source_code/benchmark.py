@@ -69,7 +69,6 @@ def run_benchmark():
         }
     ]
 
-    # Chạy các độ sâu 1, 2, 3 và cả 4 (để ép xung)
     depths_to_test = [1, 2, 3, 4]
 
     print(f"{'Trạng thái':<35} | {'Thuật toán':<12} | {'Độ sâu':<6} | {'Nước đi':<10} | {'Số TT đã xét':<15} | {'Thời gian (s)'}")
@@ -77,7 +76,7 @@ def run_benchmark():
 
     for state in states:
         for depth in depths_to_test:
-            # 1. Test Minimax (Chỉ chạy khi Depth <= 3 để tránh treo máy)
+            # 1. Test Minimax (Chỉ chạy khi Depth <= 3)
             if depth <= 3:
                 game.board = [row[:] for row in state["board"]]
                 game.nodes_visited = 0
@@ -88,10 +87,10 @@ def run_benchmark():
                 
                 print(f"{state['name']:<35} | {'Minimax':<12} | {depth:<6} | {str(move_mm):<10} | {nodes_mm:<15} | {time_mm:.4f}")
             else:
-                # Nếu Depth = 4, in ra N/A để báo cáo
+                # Nếu Depth = 4, in ra N/A
                 print(f"{state['name']:<35} | {'Minimax':<12} | {depth:<6} | {'N/A':<10} | {'> 500,000':<15} | {'Timeout'}")
 
-            # 2. Test Alpha-Beta (Chạy ở mọi Độ sâu, kể cả Depth 4)
+            # 2. Test Alpha-Beta (Chạy ở mọi Độ sâu)
             game.board = [row[:] for row in state["board"]]
             game.nodes_visited = 0
             start = time.time()
@@ -99,7 +98,6 @@ def run_benchmark():
             time_ab = time.time() - start
             nodes_ab = game.nodes_visited
 
-            # Nếu là Minimax thì in kèm tên trạng thái, Alpha-beta thì để trống cột đầu cho đẹp
             name_col = "" if depth <= 3 else state['name'] 
             print(f"{name_col:<35} | {'Alpha-Beta':<12} | {depth:<6} | {str(move_ab):<10} | {nodes_ab:<15} | {time_ab:.4f}")
             
