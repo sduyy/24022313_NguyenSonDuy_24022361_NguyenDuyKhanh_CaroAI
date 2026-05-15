@@ -102,7 +102,7 @@ class CaroGame:
 
     def undo(self):
         """Xử lý logic lùi bước (hoãn cờ) dựa trên chế độ chơi."""
-        if not self.history or self.undo_count >= 2 or getattr(self, 'just_undid', False):
+        if self.game_over or not self.history or self.undo_count >= 2 or getattr(self, 'just_undid', False):
             return False
             
         pops = 1
@@ -593,7 +593,7 @@ def draw_status(game, btn_undo, btn_menu, mouse_pos):
         screen.blit(text_bg, (SCREEN_WIDTH // 2 - text_bg.get_width() // 2, status_y - 5))
         screen.blit(text_surf, (SCREEN_WIDTH // 2 - text_surf.get_width() // 2, status_y))
     
-    if len(game.history) > 0 and game.undo_count < 2 and not getattr(game, 'just_undid', False):
+    if not game.game_over and len(game.history) > 0 and game.undo_count < 2 and not getattr(game, 'just_undid', False):
         color3 = BUTTON_HOVER_COLOR if btn_undo.collidepoint(mouse_pos) else BUTTON_COLOR
         pygame.draw.rect(screen, color3, btn_undo, border_radius=15)
         btn3_text = small_font.render(f"Đi lại ({2 - game.undo_count})", True, WHITE)
