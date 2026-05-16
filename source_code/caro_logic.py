@@ -83,13 +83,12 @@ class CaroGame:
         self.just_undid = False
         self.winning_line = None
         self.game_over_time = 0
-        self.current_board_score = 0  # Điểm số cộng dồn của toàn bộ bàn cờ
-        self.nodes_visited = 0        # Số trạng thái AI đã duyệt qua
+        self.current_board_score = 0
+        self.nodes_visited = 0
 
     def make_move(self, r, c, player):
         """Kiểm tra và thực hiện đánh quân cờ vào tọa độ (r, c)."""
         if 0 <= r < SIZE and 0 <= c < SIZE and self.board[r][c] == '.':
-            # Cập nhật điểm số cộng dồn trước khi đặt quân
             old_local = self.get_local_score(r, c)
             self.board[r][c] = player
             new_local = self.get_local_score(r, c)
@@ -117,7 +116,6 @@ class CaroGame:
                 r, c = self.history.pop()
                 self.current_player = self.board[r][c]
                 
-                # Cập nhật điểm số cộng dồn khi hoàn tác
                 old_local = self.get_local_score(r, c)
                 self.board[r][c] = '.'
                 new_local = self.get_local_score(r, c)
@@ -137,14 +135,12 @@ class CaroGame:
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
         for dr, dc in directions:
             count = 1
-            # Kiểm tra hướng dương
             for step in range(1, 4):
                 nr, nc = r + dr * step, c + dc * step
                 if 0 <= nr < SIZE and 0 <= nc < SIZE and self.board[nr][nc] == player:
                     count += 1
                 else:
                     break
-            # Kiểm tra hướng âm
             for step in range(1, 4):
                 nr, nc = r - dr * step, c - dc * step
                 if 0 <= nr < SIZE and 0 <= nc < SIZE and self.board[nr][nc] == player:
@@ -205,7 +201,7 @@ class CaroGame:
         return score
 
     def get_local_score(self, r, c):
-        """Tính điểm cục bộ xung quanh vị trí (r, c) để tối ưu hóa việc sắp xếp nước đi."""
+        """Tính điểm cục bộ xung quanh vị trí (r, c)."""
         local_total = 0
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
         
@@ -309,12 +305,10 @@ class CaroGame:
 
     def minimax(self, depth, is_maximizing, last_r=None, last_c=None):
         """Thuật toán Minimax tìm kiếm nước đi tối ưu với điểm số cộng dồn."""
-        # Đồng bộ điểm số tại nút gốc (root)
         if self.nodes_visited == 0:
             self.current_board_score = self.evaluate_board()
         self.nodes_visited += 1
 
-        # Kiểm tra thắng thua dựa trên nước đi cuối cùng
         if last_r is not None and last_c is not None:
             opponent = 'X' if is_maximizing else 'O'
             if self.check_win(last_r, last_c, opponent):
@@ -332,7 +326,6 @@ class CaroGame:
         if is_maximizing:
             max_eval = -math.inf
             for (r, c) in valid_moves:
-                # Cập nhật điểm số cộng dồn (Incremental Update)
                 old_local = self.get_local_score(r, c)
                 self.board[r][c] = 'O'
                 new_local = self.get_local_score(r, c)
@@ -341,7 +334,6 @@ class CaroGame:
                 
                 eval_score, _ = self.minimax(depth - 1, False, r, c)
                 
-                # Hoàn tác (Backtrack)
                 self.current_board_score -= diff
                 self.board[r][c] = '.'
                 
@@ -353,7 +345,6 @@ class CaroGame:
         else:
             min_eval = math.inf
             for (r, c) in valid_moves:
-                # Cập nhật điểm số cộng dồn (Incremental Update)
                 old_local = self.get_local_score(r, c)
                 self.board[r][c] = 'X'
                 new_local = self.get_local_score(r, c)
@@ -362,7 +353,6 @@ class CaroGame:
                 
                 eval_score, _ = self.minimax(depth - 1, True, r, c)
                 
-                # Hoàn tác (Backtrack)
                 self.current_board_score -= diff
                 self.board[r][c] = '.'
                 
@@ -373,12 +363,10 @@ class CaroGame:
         
     def alphabeta(self, depth, alpha, beta, is_maximizing, last_r=None, last_c=None):
         """Thuật toán Alpha-Beta Pruning với điểm số cộng dồn."""
-        # Đồng bộ điểm số tại nút gốc (root)
         if self.nodes_visited == 0:
             self.current_board_score = self.evaluate_board()
         self.nodes_visited += 1
 
-        # Kiểm tra thắng thua dựa trên nước đi cuối cùng
         if last_r is not None and last_c is not None:
             opponent = 'X' if is_maximizing else 'O'
             if self.check_win(last_r, last_c, opponent):
@@ -395,7 +383,6 @@ class CaroGame:
         if is_maximizing:
             max_eval = -math.inf
             for (r, c) in valid_moves:
-                # Cập nhật điểm số cộng dồn (Incremental Update)
                 old_local = self.get_local_score(r, c)
                 self.board[r][c] = 'O'
                 new_local = self.get_local_score(r, c)
@@ -404,7 +391,6 @@ class CaroGame:
                 
                 eval_score, _ = self.alphabeta(depth - 1, alpha, beta, False, r, c)
                 
-                # Hoàn tác (Backtrack)
                 self.current_board_score -= diff
                 self.board[r][c] = '.'
                 
@@ -420,7 +406,6 @@ class CaroGame:
         else:
             min_eval = math.inf
             for (r, c) in valid_moves:
-                # Cập nhật điểm số cộng dồn (Incremental Update)
                 old_local = self.get_local_score(r, c)
                 self.board[r][c] = 'X'
                 new_local = self.get_local_score(r, c)
@@ -429,7 +414,6 @@ class CaroGame:
                 
                 eval_score, _ = self.alphabeta(depth - 1, alpha, beta, True, r, c)
                 
-                # Hoàn tác (Backtrack)
                 self.current_board_score -= diff
                 self.board[r][c] = '.'
                 
@@ -461,8 +445,6 @@ class CaroGame:
         print(f"Thời gian thực thi: {elapsed_time:.4f}s")
         
         return move
-
-
 
 def draw_menu(mouse_pos, btn_minimax, btn_alphabeta, btn_2p):
     """Vẽ giao diện hiển thị Menu chính."""
