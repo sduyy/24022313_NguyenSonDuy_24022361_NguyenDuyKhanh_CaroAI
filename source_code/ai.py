@@ -1,13 +1,3 @@
-"""
-ai.py
-Thuật toán AI cho Caro:
-  - Minimax thuần túy
-  - Alpha-Beta Pruning
-  - bot_move(): giao diện gọi AI và in kết quả ra console
-Các hàm này được tách thành module độc lập và inject vào CaroGame
-thông qua monkey-patching khi module được import.
-"""
-
 import math
 import time
 

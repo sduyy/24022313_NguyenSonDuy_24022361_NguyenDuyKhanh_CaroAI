@@ -65,14 +65,8 @@ pip install -r requirements.txt
 
 ### 3. Chạy trò chơi
 
-**Cách 1** — Dùng file entry point mới (khuyến nghị):
 ```bash
 python source_code/main.py
-```
-
-**Cách 2** — Dùng file gốc (vẫn hoạt động):
-```bash
-python source_code/caro_logic.py
 ```
 
 ### 4. Chạy Benchmark (Kiểm thử hiệu năng)

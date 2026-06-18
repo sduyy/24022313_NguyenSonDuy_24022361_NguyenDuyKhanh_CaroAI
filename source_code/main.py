@@ -1,10 +1,3 @@
-"""
-main.py
-Vòng lặp chính (game loop) của Caro AI.
-Xử lý toàn bộ sự kiện người dùng, điều phối giữa các trạng thái game
-(MENU / DIFFICULTY / PLAYING / CONFIRM_QUIT) và gọi renderer.
-"""
-
 import sys
 import math
 import pygame

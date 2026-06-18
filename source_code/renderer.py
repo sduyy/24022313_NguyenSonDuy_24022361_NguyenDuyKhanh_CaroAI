@@ -1,14 +1,3 @@
-"""
-renderer.py
-Tập hợp tất cả các hàm vẽ (render) giao diện pygame:
-  - draw_menu()             — Menu chính
-  - draw_difficulty_menu()  — Chọn độ khó
-  - draw_board()            — Bàn cờ và quân cờ
-  - draw_status()           — Thanh trạng thái & nút phụ
-  - draw_game_over_popup()  — Popup kết quả
-  - draw_confirm_quit()     — Popup xác nhận thoát
-"""
-
 import pygame
 
 from constants import (

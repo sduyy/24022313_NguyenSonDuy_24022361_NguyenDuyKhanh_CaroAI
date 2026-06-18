@@ -1,9 +1,3 @@
-"""
-resources.py
-Khởi tạo pygame, tạo cửa sổ, load font chữ và ảnh nền.
-Phải được import trước tất cả các module vẽ khác vì nó khởi tạo pygame.
-"""
-
 import pygame
 import os
 

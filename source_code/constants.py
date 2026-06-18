@@ -1,8 +1,3 @@
-"""
-constants.py
-Định nghĩa tất cả hằng số dùng chung trong toàn bộ dự án Caro AI.
-"""
-
 # ─── Kích thước bàn cờ ────────────────────────────────────────────────────────
 SIZE = 9
 CELL_SIZE = 50

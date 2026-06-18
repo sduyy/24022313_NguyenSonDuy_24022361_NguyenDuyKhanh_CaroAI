@@ -2,7 +2,7 @@ import math
 import time
 from constants import SIZE
 from game_logic import CaroGame
-import ai  # noqa: F401 — gắn minimax/alphabeta vào CaroGame
+import ai 
 
 def run_benchmark():
     game = CaroGame()

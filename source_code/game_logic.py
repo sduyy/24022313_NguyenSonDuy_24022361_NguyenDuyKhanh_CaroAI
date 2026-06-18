@@ -1,11 +1,3 @@
-"""
-game_logic.py
-Lớp CaroGame quản lý toàn bộ trạng thái và logic cơ bản của ván cờ:
-  - Bàn cờ, lịch sử nước đi, lùi bước (undo)
-  - Kiểm tra thắng / hòa
-  - Hàm heuristic đánh giá cửa sổ và điểm toàn bàn
-"""
-
 import math
 import time
 
@@ -45,13 +37,12 @@ class CaroGame:
         self.just_undid = False
         self.winning_line = None
         self.game_over_time = 0
-        self.current_board_score = 0   # Điểm số cộng dồn của toàn bộ bàn cờ
-        self.nodes_visited = 0         # Số trạng thái AI đã duyệt qua
+        self.current_board_score = 0
+        self.nodes_visited = 0
 
     def make_move(self, r, c, player):
         """Kiểm tra và thực hiện đánh quân cờ vào tọa độ (r, c)."""
         if 0 <= r < SIZE and 0 <= c < SIZE and self.board[r][c] == '.':
-            # Cập nhật điểm số cộng dồn trước khi đặt quân
             old_local = self.get_local_score(r, c)
             self.board[r][c] = player
             new_local = self.get_local_score(r, c)
@@ -79,7 +70,6 @@ class CaroGame:
                 r, c = self.history.pop()
                 self.current_player = self.board[r][c]
 
-                # Cập nhật điểm số cộng dồn khi hoàn tác
                 old_local = self.get_local_score(r, c)
                 self.board[r][c] = '.'
                 new_local = self.get_local_score(r, c)
@@ -103,14 +93,12 @@ class CaroGame:
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
         for dr, dc in directions:
             count = 1
-            # Kiểm tra hướng dương
             for step in range(1, 4):
                 nr, nc = r + dr * step, c + dc * step
                 if 0 <= nr < SIZE and 0 <= nc < SIZE and self.board[nr][nc] == player:
                     count += 1
                 else:
                     break
-            # Kiểm tra hướng âm
             for step in range(1, 4):
                 nr, nc = r - dr * step, c - dc * step
                 if 0 <= nr < SIZE and 0 <= nc < SIZE and self.board[nr][nc] == player:
